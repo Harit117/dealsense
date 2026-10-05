@@ -75,7 +75,13 @@ docker compose up -d
 docker compose exec n8n n8n import:workflow --separate --input=/workflows
 ```
 
-Open n8n at http://localhost:5678, activate the four workflows, then send a lead through n8n:
+Publish (activate) the four workflows in the n8n UI at http://localhost:5678, or from the CLI and then restart n8n:
+
+```bash
+docker compose exec n8n n8n publish:workflow --id=dealsense3d5ba3f && docker compose exec n8n n8n publish:workflow --id=dealsense783f01a && docker compose exec n8n n8n publish:workflow --id=dealsensed98206c && docker compose exec n8n n8n publish:workflow --id=dealsense9d7e9d3 && docker compose restart n8n
+```
+
+Then send a lead through n8n:
 
 ```bash
 curl -X POST http://localhost:5678/webhook/dealsense/lead -H "Content-Type: application/json" -d "{\"source\":\"WhatsApp\",\"name\":\"Kiran\",\"text\":\"3bhk whitefield around 1.3cr loan approved, 2 months. 9845011111\"}"
@@ -83,7 +89,7 @@ curl -X POST http://localhost:5678/webhook/dealsense/lead -H "Content-Type: appl
 
 **Without Docker:** run DealSense with `python run.py`, run n8n with `npx n8n` (set `N8N_BLOCK_ENV_ACCESS_IN_NODE=false`), import the four JSON files from the n8n UI, and set `N8N_DEAL_WEBHOOK=http://localhost:5678/webhook/dealsense/deal-scored` in DealSense's `.env`.
 
-The workflows read `DEALSENSE_URL` (default `http://localhost:8000`), `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` from n8n's environment. Telegram steps are skipped quietly when no token is set. To regenerate the JSON after editing, run `python n8n/build_workflows.py`.
+The workflows read `DEALSENSE_URL` (default `http://localhost:8000`), `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` from n8n's environment. Without a Telegram token, the Telegram step errors and the workflow carries on (`continueRegularOutput`). W4 also has a **Run now (demo)** trigger, so you can show the 8 AM refresh live. To regenerate the JSON after editing, run `python n8n/build_workflows.py`.
 
 DealSense also runs without n8n: it has its own scheduler and alert outbox, so the dashboard demo works on its own.
 

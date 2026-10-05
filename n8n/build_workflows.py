@@ -62,7 +62,8 @@ def link(*pairs):
 
 
 def workflow(name, nodes, connections, notes):
-    return {"name": name, "nodes": nodes + [node("About", "n8n-nodes-base.stickyNote",
+    wid = "dealsense" + uuid.uuid5(uuid.NAMESPACE_URL, f"dealsense/wf/{name}").hex[:7]  # stable 16-char id
+    return {"id": wid, "name": name, "nodes": nodes + [node("About", "n8n-nodes-base.stickyNote",
                                                    {"content": notes, "height": 260, "width": 420}, [-60, -320])],
             "connections": connections, "settings": {"executionOrder": "v1"}, "pinData": {}, "active": False}
 
@@ -147,6 +148,7 @@ W4 = workflow(
     [
         node("Every day 8 AM", "n8n-nodes-base.scheduleTrigger",
              {"rule": {"interval": [{"field": "cronExpression", "expression": "0 8 * * *"}]}}, [0, 0], 1.2),
+        node("Run now (demo)", "n8n-nodes-base.manualTrigger", {}, [0, -160]),
         http("DealSense: re-score all with time decay", "POST", API + "/api/refresh", [240, 0]),
         http("DealSense: retrain weights from outcomes", "POST", API + "/api/retrain", [480, 0]),
         telegram("Send Top-10 digest (Telegram)",
@@ -158,6 +160,7 @@ W4 = workflow(
              body="{{ JSON.stringify({ outcome: $json.body.outcome }) }}"),
     ],
     link(("Every day 8 AM", "DealSense: re-score all with time decay"),
+         ("Run now (demo)", "DealSense: re-score all with time decay"),
          ("DealSense: re-score all with time decay", "DealSense: retrain weights from outcomes"),
          ("DealSense: retrain weights from outcomes", "Send Top-10 digest (Telegram)"),
          ("Broker outcome webhook", "DealSense: log outcome")),

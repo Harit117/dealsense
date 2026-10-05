@@ -1,4 +1,5 @@
 {
+  "id": "dealsense9d7e9d3",
   "name": "DealSense W4 · Refresh & Learn",
   "nodes": [
     {
@@ -20,6 +21,17 @@
           ]
         }
       }
+    },
+    {
+      "id": "fdab0220-668e-5626-97c7-cfc4dc7218c2",
+      "name": "Run now (demo)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -160
+      ],
+      "parameters": {}
     },
     {
       "id": "24c05718-c5ea-5324-a577-7af41c23b79d",
@@ -123,6 +135,17 @@
   ],
   "connections": {
     "Every day 8 AM": {
+      "main": [
+        [
+          {
+            "node": "DealSense: re-score all with time decay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run now (demo)": {
       "main": [
         [
           {
