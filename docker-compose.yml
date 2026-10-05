@@ -1,0 +1,31 @@
+# DealSense API + n8n orchestration.
+#   docker compose up -d
+#   docker compose exec n8n n8n import:workflow --separate --input=/workflows
+# Dashboard: http://localhost:8000   n8n: http://localhost:5678
+services:
+  dealsense:
+    build: .
+    ports: ["8000:8000"]
+    env_file: [{ path: .env, required: false }]
+    environment:
+      N8N_DEAL_WEBHOOK: http://n8n:5678/webhook/dealsense/deal-scored
+    volumes: [dealsense-data:/app/data]
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    ports: ["5678:5678"]
+    environment:
+      DEALSENSE_URL: http://dealsense:8000
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"   # workflows read DEALSENSE_URL / TELEGRAM_* via $env
+      GENERIC_TIMEZONE: Asia/Kolkata
+      TZ: Asia/Kolkata
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+    volumes:
+      - n8n-data:/home/node/.n8n
+      - ./n8n:/workflows:ro
+    depends_on: [dealsense]
+
+volumes:
+  dealsense-data:
+  n8n-data:

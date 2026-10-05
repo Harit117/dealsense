@@ -137,4 +137,4 @@ def daily_refresh(conn) -> dict:
     acted = actions.dispatch(conn, deals)
     dig = actions.digest(conn)
     db.set_setting(conn, "last_refresh", db.iso(db.now()))
-    return {"rescored": len(deals), "actions": acted, "digest_title": dig["title"]}
+    return {"rescored": len(deals), "actions": acted, "digest_title": dig["title"], "digest": dig["body"]}

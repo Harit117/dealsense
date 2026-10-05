@@ -32,6 +32,10 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL", "")
 
+# n8n orchestration (optional). DealSense POSTs every routed deal here so the n8n
+# "W3 Decide & Act" workflow can switch on the score and deliver it.
+N8N_DEAL_WEBHOOK = os.getenv("N8N_DEAL_WEBHOOK", "")
+
 # Routing thresholds from the deck: 80+ instant alert, 50-79 digest, <50 nurture.
 HOT_THRESHOLD = 80
 DIGEST_THRESHOLD = 50

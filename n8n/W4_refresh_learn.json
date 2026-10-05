@@ -1,0 +1,175 @@
+{
+  "name": "DealSense W4 · Refresh & Learn",
+  "nodes": [
+    {
+      "id": "e608c0a0-a861-57b4-ba39-46af3f308cec",
+      "name": "Every day 8 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "24c05718-c5ea-5324-a577-7af41c23b79d",
+      "name": "DealSense: re-score all with time decay",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DEALSENSE_URL || 'http://localhost:8000' }}/api/refresh",
+        "options": {}
+      }
+    },
+    {
+      "id": "69603781-92a0-5926-a15c-fa4a04f35c9d",
+      "name": "DealSense: retrain weights from outcomes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DEALSENSE_URL || 'http://localhost:8000' }}/api/retrain",
+        "options": {}
+      }
+    },
+    {
+      "id": "a45b1afa-ae51-53a9-bcd0-88394280c304",
+      "name": "Send Top-10 digest (Telegram)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: '📋 ' + $('DealSense: re-score all with time decay').first().json.digest_title + '\\n\\n' + $('DealSense: re-score all with time decay').first().json.digest }) }}"
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "bd4cb56e-c69a-502b-9910-d6094b321415",
+      "name": "Broker outcome webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        220
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dealsense/outcome",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "webhookId": "2233976f-2e88-5420-82ac-5f756d5270f3"
+    },
+    {
+      "id": "5f8d94ca-8550-534e-880c-4a2ce53c85c0",
+      "name": "DealSense: log outcome",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        220
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DEALSENSE_URL || 'http://localhost:8000' }}/api/deals/{{ $json.body.lead_id }}/{{ $json.body.property_id }}/outcome",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ outcome: $json.body.outcome }) }}"
+      }
+    },
+    {
+      "id": "d51c160a-2130-5d7e-96fb-12e7c30fcf9a",
+      "name": "About",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -320
+      ],
+      "parameters": {
+        "content": "## W4 Refresh & Learn\nDaily 8 AM: re-score every deal with time decay (stale leads sink), retrain the scoring weights from logged outcomes, and send the broker the Top-10 digest.\n\nBrokers log outcomes (called / visited / closed / lost) via the dashboard or POST /webhook/dealsense/outcome.",
+        "height": 260,
+        "width": 420
+      }
+    }
+  ],
+  "connections": {
+    "Every day 8 AM": {
+      "main": [
+        [
+          {
+            "node": "DealSense: re-score all with time decay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DealSense: re-score all with time decay": {
+      "main": [
+        [
+          {
+            "node": "DealSense: retrain weights from outcomes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DealSense: retrain weights from outcomes": {
+      "main": [
+        [
+          {
+            "node": "Send Top-10 digest (Telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Broker outcome webhook": {
+      "main": [
+        [
+          {
+            "node": "DealSense: log outcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "active": false
+}

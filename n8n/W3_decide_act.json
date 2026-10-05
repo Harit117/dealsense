@@ -1,0 +1,184 @@
+{
+  "name": "DealSense W3 · Decide & Act",
+  "nodes": [
+    {
+      "id": "0e911e86-2498-517e-9d11-0d2c0f1de39f",
+      "name": "Deal scored (from DealSense)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dealsense/deal-scored",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "85fb11f1-2f2a-5f38-b6a0-3ba07e24ac20"
+    },
+    {
+      "id": "97e2aabf-ba0d-51e0-93c8-a30382fb0374",
+      "name": "Switch on score",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 3,
+        "output": "={{ $json.body.score >= 80 ? 0 : ($json.body.score >= 50 ? 1 : 2) }}"
+      }
+    },
+    {
+      "id": "14ccf66d-ea30-55eb-a7c0-9e7d956d6d98",
+      "name": "Format hot-deal alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        -180
+      ],
+      "parameters": {
+        "jsCode": "const d = $input.first().json.body;\nconst text = `🔥 ${d.title}\\n${d.message}\\n\\nCall ${d.lead.name}: ${d.lead.phone || 'n/a'}`;\nreturn [{ json: { ...d, text } }];"
+      }
+    },
+    {
+      "id": "cf4d8550-1b5c-5de2-a4f1-24113a6c6ebb",
+      "name": "Instant alert to broker (Telegram)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        760,
+        -180
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: $json.text }) }}"
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "4fa35e0d-1108-5dc0-930d-eed2ac570558",
+      "name": "Hold for daily Top-10 digest",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        500,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "4bf7d67a-7373-5cef-81e2-e6f1f5b119bc",
+      "name": "Draft nurture message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        180
+      ],
+      "parameters": {
+        "jsCode": "const d = $input.first().json.body;\nreturn [{ json: { to: d.lead.phone, name: d.lead.name, text: d.message } }];"
+      }
+    },
+    {
+      "id": "20c0b2c3-9417-5adf-a45b-eec8441e5bb6",
+      "name": "Send via WhatsApp Business API",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        760,
+        180
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "d51c160a-2130-5d7e-96fb-12e7c30fcf9a",
+      "name": "About",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -320
+      ],
+      "parameters": {
+        "content": "## W3 Decide & Act\nDealSense POSTs every routed deal here (set N8N_DEAL_WEBHOOK on DealSense).\n\nSwitch on score: **80+** instant alert to the broker · **50-79** daily Top-10 digest · **<50** auto-nurture to the lead.\n\nSwap the WhatsApp placeholder for your WhatsApp Business node once you have API access.",
+        "height": 260,
+        "width": 420
+      }
+    }
+  ],
+  "connections": {
+    "Deal scored (from DealSense)": {
+      "main": [
+        [
+          {
+            "node": "Switch on score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch on score": {
+      "main": [
+        [
+          {
+            "node": "Format hot-deal alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Hold for daily Top-10 digest",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Draft nurture message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format hot-deal alert": {
+      "main": [
+        [
+          {
+            "node": "Instant alert to broker (Telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft nurture message": {
+      "main": [
+        [
+          {
+            "node": "Send via WhatsApp Business API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "active": false
+}

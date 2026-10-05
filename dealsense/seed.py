@@ -209,8 +209,9 @@ def seed(reset=True, n_buyers=70, verbose=True):
             for table in ("deals", "outbox", "engagements", "outcomes", "settings", "leads", "properties"):
                 conn.execute(f"DELETE FROM {table}")
             conn.execute("DELETE FROM sqlite_sequence")
-    prev_llm = config.USE_LLM
+    prev_llm, prev_hook = config.USE_LLM, config.N8N_DEAL_WEBHOOK
     config.USE_LLM = "off"  # seed with the free rules extractor; live intake uses Claude when configured
+    config.N8N_DEAL_WEBHOOK = ""  # don't flood n8n with the demo backlog
     now = db.now()
     try:
         with db.connect() as conn:
@@ -268,7 +269,7 @@ def seed(reset=True, n_buyers=70, verbose=True):
                 for d in actions.top_deals(conn, 10):
                     print(f"  {d['score']:5.1f}  {d['lead_name']:<18} x {d['property_label']:<26} {d['next_step']}")
     finally:
-        config.USE_LLM = prev_llm
+        config.USE_LLM, config.N8N_DEAL_WEBHOOK = prev_llm, prev_hook
 
 
 if __name__ == "__main__":

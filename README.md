@@ -57,7 +57,35 @@ Lead sources ──► W1 Intake & Enrichment ──► Leads / Listings DB ─�
 | W3 Decide & Act | `dealsense/actions.py` | After every scoring run |
 | W4 Refresh & Learn | `dealsense/learning.py`, `pipeline.daily_refresh` | Built-in daily scheduler, `POST /api/refresh`, `POST /api/retrain`, and automatically every 5 logged outcomes |
 
-The deck's plan runs orchestration in n8n. The API is built to sit behind it. Each n8n workflow becomes a trigger node (Webhook, Gmail, WhatsApp Business or Cron) followed by an HTTP Request node pointed at the matching endpoint above. `/api/webhooks/{source}` accepts any JSON payload and looks for the message in `text`, `message`, `body` or `enquiry`.
+## n8n orchestration
+
+The four workflows also ship as importable **n8n workflows** in [`n8n/`](n8n/). n8n handles the triggers, routing and delivery; DealSense is the AI and scoring engine they call.
+
+| n8n workflow | Nodes |
+|---|---|
+| `W1_intake_enrichment.json` | Webhook `POST /webhook/dealsense/lead` → Code (normalise portal / WhatsApp / Gmail / Forms payloads) → HTTP `DealSense /api/webhooks/{source}` → summary |
+| `W2_matching_scoring.json` | Webhook `/webhook/dealsense/engagement` (views, replies, visits) → HTTP `/api/events` (re-scores the buyer immediately); hourly Top-10 pull |
+| `W3_decide_act.json` | Webhook `/webhook/dealsense/deal-scored` ← DealSense → **Switch on score**: 80+ → instant Telegram alert · 50–79 → digest · <50 → nurture via WhatsApp Business |
+| `W4_refresh_learn.json` | **Cron 8 AM** → HTTP `/api/refresh` (time decay) → HTTP `/api/retrain` → Telegram Top-10 digest; outcome webhook → `/api/deals/{lead}/{property}/outcome` |
+
+**With Docker (DealSense + n8n together):**
+
+```bash
+docker compose up -d
+docker compose exec n8n n8n import:workflow --separate --input=/workflows
+```
+
+Open n8n at http://localhost:5678, activate the four workflows, then send a lead through n8n:
+
+```bash
+curl -X POST http://localhost:5678/webhook/dealsense/lead -H "Content-Type: application/json" -d "{\"source\":\"WhatsApp\",\"name\":\"Kiran\",\"text\":\"3bhk whitefield around 1.3cr loan approved, 2 months. 9845011111\"}"
+```
+
+**Without Docker:** run DealSense with `python run.py`, run n8n with `npx n8n` (set `N8N_BLOCK_ENV_ACCESS_IN_NODE=false`), import the four JSON files from the n8n UI, and set `N8N_DEAL_WEBHOOK=http://localhost:5678/webhook/dealsense/deal-scored` in DealSense's `.env`.
+
+The workflows read `DEALSENSE_URL` (default `http://localhost:8000`), `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` from n8n's environment. Telegram steps are skipped quietly when no token is set. To regenerate the JSON after editing, run `python n8n/build_workflows.py`.
+
+DealSense also runs without n8n: it has its own scheduler and alert outbox, so the dashboard demo works on its own.
 
 ## How it decides
 
@@ -108,7 +136,7 @@ Interactive docs: http://localhost:8000/docs
 
 ## Tech
 
-Python · FastAPI · SQLite · scikit-learn · Claude (`claude-opus-5-5`, structured outputs) · vanilla JS dashboard with no build step. The schema maps one-to-one onto the Supabase/Postgres tables in the design.
+n8n (4 workflows) · Python · FastAPI · SQLite · scikit-learn · Claude (`claude-opus-5-5`, structured outputs) · vanilla JS dashboard with no build step. The schema maps one-to-one onto the Supabase/Postgres tables in the design.
 
 ## Roadmap
 

@@ -1,0 +1,121 @@
+{
+  "name": "DealSense W1 · Intake & Enrichment",
+  "nodes": [
+    {
+      "id": "66bc7c80-3b83-5391-9aef-9d79ccddf025",
+      "name": "Lead webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dealsense/lead",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "webhookId": "53d04be7-c470-5b0e-8e28-3087f9437e42"
+    },
+    {
+      "id": "13f6f16f-430a-5083-83cd-572162e43ce9",
+      "name": "Normalise channel payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// Portals, WhatsApp Business, Gmail and Google Forms all post different shapes.\nreturn $input.all().map(item => {\n  const body = item.json.body || {};\n  const source = body.source || (item.json.query || {}).source || 'n8n';\n  const text = body.text || body.message || body.body || body.enquiry || body.snippet || '';\n  return { json: { source, payload: { ...body, text } } };\n});"
+      }
+    },
+    {
+      "id": "aad79de4-a395-5178-b57f-71ac4ffc920e",
+      "name": "DealSense: extract, de-dup, match, score",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DEALSENSE_URL || 'http://localhost:8000' }}/api/webhooks/{{ $json.source }}",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}"
+      }
+    },
+    {
+      "id": "b0e771ab-8eab-5dfe-8e4b-768cbf937aed",
+      "name": "Summarise result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const r = $input.first().json;\nconst best = (r.top_matches || [])[0];\nreturn [{ json: {\n  lead: r.lead.name, deduplicated: r.deduplicated, extraction: r.extraction,\n  best_match: best ? `${best.property_label} (${Math.round(best.score)})` : null,\n  route: best ? best.route : 'nurture', actions: r.actions,\n}}];"
+      }
+    },
+    {
+      "id": "d51c160a-2130-5d7e-96fb-12e7c30fcf9a",
+      "name": "About",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -320
+      ],
+      "parameters": {
+        "content": "## W1 Intake & Enrichment\nPoint every lead channel at this webhook (POST /webhook/dealsense/lead, add `source` in the body or ?source=).\n\nDealSense extracts budget, location, BHK and urgency with Claude (or rules), de-duplicates by phone/email, then matches and scores every buyer x property pair.",
+        "height": 260,
+        "width": 420
+      }
+    }
+  ],
+  "connections": {
+    "Lead webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalise channel payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalise channel payload": {
+      "main": [
+        [
+          {
+            "node": "DealSense: extract, de-dup, match, score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DealSense: extract, de-dup, match, score": {
+      "main": [
+        [
+          {
+            "node": "Summarise result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "active": false
+}

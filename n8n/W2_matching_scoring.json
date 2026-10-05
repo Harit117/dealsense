@@ -1,0 +1,119 @@
+{
+  "name": "DealSense W2 · Matching & Scoring",
+  "nodes": [
+    {
+      "id": "ecd9d158-eff9-5d01-a9aa-13b8d69f9fda",
+      "name": "Engagement webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dealsense/engagement",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "webhookId": "47519304-755f-58c1-8b26-66d6bf0fe2f4"
+    },
+    {
+      "id": "bc5e401e-dd60-5454-be43-9f87f251a3eb",
+      "name": "DealSense: log event + re-score buyer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DEALSENSE_URL || 'http://localhost:8000' }}/api/events",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ lead_id: $json.body.lead_id, kind: $json.body.kind || 'view', property_id: $json.body.property_id }) }}"
+      }
+    },
+    {
+      "id": "a84b7287-945c-5519-b87d-8324d8da6d60",
+      "name": "Hourly",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        220
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "9cb56574-bf53-5092-a51b-2f36a68b1559",
+      "name": "DealSense: current Top 10",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        220
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.DEALSENSE_URL || 'http://localhost:8000' }}/api/top?sort=score",
+        "options": {}
+      }
+    },
+    {
+      "id": "d51c160a-2130-5d7e-96fb-12e7c30fcf9a",
+      "name": "About",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -320
+      ],
+      "parameters": {
+        "content": "## W2 Matching & Scoring\nEvery new or updated lead is re-matched and scored inside DealSense (W1 triggers it).\n\nThis workflow feeds engagement signals (listing views, replies, visits) from portals/WhatsApp into POST /api/events, which re-scores that buyer immediately. A deal that crosses 80 fires W3.",
+        "height": 260,
+        "width": 420
+      }
+    }
+  ],
+  "connections": {
+    "Engagement webhook": {
+      "main": [
+        [
+          {
+            "node": "DealSense: log event + re-score buyer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hourly": {
+      "main": [
+        [
+          {
+            "node": "DealSense: current Top 10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "active": false
+}

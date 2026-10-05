@@ -42,12 +42,34 @@ def _deliver(title: str, body: str) -> str:
     return channel
 
 
+def notify_n8n(event: dict) -> bool:
+    """Hand a routed deal to the n8n W3 workflow. Never blocks the pipeline for long."""
+    if not config.N8N_DEAL_WEBHOOK:
+        return False
+    try:
+        httpx.post(config.N8N_DEAL_WEBHOOK, json=event, timeout=3).raise_for_status()
+        return True
+    except httpx.HTTPError as exc:
+        log.warning("n8n webhook failed: %s", exc)
+        return False
+
+
+def _deal_event(kind, lead, prop, deal, title, body) -> dict:
+    return {
+        "event": kind, "route": deal["route"], "score": round(deal["score"], 1), "next_step": deal["next_step"],
+        "lead": {"id": lead["id"], "name": lead["name"], "phone": lead["phone"], "source": lead["source"]},
+        "property": {"id": prop["id"], "label": property_label(prop), "title": prop["title"], "price": prop["price"]},
+        "reasons": [r["text"] for r in deal["reasons"]],
+        "title": title, "message": body,
+    }
+
+
 def _queue(conn, kind, channel, title, body, lead_id=None, property_id=None, score=None):
     conn.execute(
         "INSERT INTO outbox(kind, channel, lead_id, property_id, score, title, body, status, created_at) "
         "VALUES (?,?,?,?,?,?,?,?,?)",
         (kind, channel, lead_id, property_id, score, title, body,
-         "sent" if channel != "whatsapp-sim" else "queued", db.iso(db.now())),
+         "queued" if channel == "whatsapp-sim" else "sent", db.iso(db.now())),
     )
 
 
@@ -95,8 +117,10 @@ def dispatch(conn, deals: list, nurture=True) -> dict:
             (d["lead_id"], d["property_id"], db.iso(now - timedelta(hours=24)))).fetchone()
         if recent:
             continue
-        title, body = alert_text(leads[d["lead_id"]], props[d["property_id"]], d)
-        _queue(conn, "alert", _deliver(title, body), title, body, d["lead_id"], d["property_id"], d["score"])
+        lead, prop = leads[d["lead_id"]], props[d["property_id"]]
+        title, body = alert_text(lead, prop, d)
+        channel = "n8n" if notify_n8n(_deal_event("hot_deal", lead, prop, d, title, body)) else _deliver(title, body)
+        _queue(conn, "alert", channel, title, body, d["lead_id"], d["property_id"], d["score"])
         counts["alerts"] += 1
 
     if nurture:
@@ -108,9 +132,10 @@ def dispatch(conn, deals: list, nurture=True) -> dict:
                 (lead_id, db.iso(now - timedelta(days=7)))).fetchone()
             if recent:
                 continue
-            lead = leads[lead_id]
-            _queue(conn, "nurture", "whatsapp-sim", f"To {lead['name']}", nurture_text(lead, props[d["property_id"]]),
-                   lead_id, d["property_id"], d["score"])
+            lead, prop = leads[lead_id], props[d["property_id"]]
+            title, body = f"To {lead['name']}", nurture_text(lead, prop)
+            channel = "n8n" if notify_n8n(_deal_event("nurture", lead, prop, d, title, body)) else "whatsapp-sim"
+            _queue(conn, "nurture", channel, title, body, lead_id, d["property_id"], d["score"])
             conn.execute("INSERT INTO engagements(lead_id, kind, at) VALUES (?, 'message_sent', ?)", (lead_id, db.iso(now)))
             counts["nurtures"] += 1
     return counts
