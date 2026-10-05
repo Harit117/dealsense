@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DealSense</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">◆</span>
+    <div>
+      <div class="brand-name">DealSense</div>
+      <div class="brand-sub">AI deal intelligence for real-estate brokers</div>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <button data-tab="today" class="active">Today</button>
+    <button data-tab="intake">Lead intake</button>
+    <button data-tab="leads">Buyers</button>
+    <button data-tab="properties">Listings</button>
+    <button data-tab="learning">Learning</button>
+    <button data-tab="outbox">Outbox</button>
+  </nav>
+  <div class="top-meta" id="topMeta"></div>
+</header>
+
+<main>
+  <!-- TODAY -->
+  <section id="tab-today" class="tab active">
+    <div class="kpis" id="kpis"></div>
+    <div class="grid-today">
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2>Today’s Top 10 Opportunities</h2>
+            <div class="muted" id="todayMeta"></div>
+          </div>
+          <div class="head-actions">
+            <div class="seg" id="sortSeg">
+              <button data-sort="score" class="active">By score</button>
+              <button data-sort="value">By expected ₹</button>
+            </div>
+            <button class="btn ghost" id="refreshBtn" title="W4: re-score every deal with time decay and send the digest">Run daily refresh</button>
+          </div>
+        </div>
+        <table class="deals">
+          <thead><tr><th>#</th><th>Buyer × Property</th><th>Score</th><th class="hide-sm">Why</th><th class="hide-sm">Exp. commission</th><th>Next step</th></tr></thead>
+          <tbody id="topBody"></tbody>
+        </table>
+      </div>
+      <aside class="card phone">
+        <div class="phone-head"><span class="wa-dot"></span> DealSense Alerts <span class="muted">· WhatsApp</span></div>
+        <div id="alerts" class="alerts"></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- INTAKE -->
+  <section id="tab-intake" class="tab">
+    <div class="grid-2">
+      <div class="card">
+        <h2>Capture a lead</h2>
+        <p class="muted">Paste anything: a portal enquiry, a WhatsApp message, call notes. DealSense extracts the fields, de-duplicates the buyer, matches every suitable listing, scores each pair, and routes it.</p>
+        <div class="row">
+          <label>Source
+            <select id="inSource">
+              <option>WhatsApp</option><option>99acres</option><option>MagicBricks</option><option>Housing.com</option>
+              <option>Email</option><option>Call</option><option>Google Form</option><option>Walk-in</option>
+            </select>
+          </label>
+          <label>Name (optional)<input id="inName" placeholder="from portal metadata"></label>
+        </div>
+        <label>Message<textarea id="inText" rows="6" placeholder="hi sir looking 3bhk whitefield around 1.3cr, loan approved, want to shift in 2 months. 98450 11111"></textarea></label>
+        <div class="examples" id="examples"></div>
+        <button class="btn primary" id="inSubmit">Process lead</button>
+        <span class="muted" id="inStatus"></span>
+      </div>
+      <div class="card" id="inResult">
+        <h2>Result</h2>
+        <p class="muted">Extraction, matches and routing will appear here.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- LEADS -->
+  <section id="tab-leads" class="tab">
+    <div class="card">
+      <div class="card-head"><h2>Buyers</h2><input id="leadSearch" class="search" placeholder="Search name, locality, source"></div>
+      <table class="list"><thead><tr><th>Buyer</th><th>Source</th><th>Wants</th><th class="hide-sm">Budget</th><th class="hide-sm">Timeline</th><th>Best score</th></tr></thead>
+        <tbody id="leadsBody"></tbody></table>
+    </div>
+  </section>
+
+  <!-- PROPERTIES -->
+  <section id="tab-properties" class="tab">
+    <div class="card">
+      <h2>Listings</h2>
+      <table class="list"><thead><tr><th>Listing</th><th>Locality</th><th>Price</th><th class="hide-sm">Seller flex</th><th>Matched buyers</th><th>Best score</th></tr></thead>
+        <tbody id="propsBody"></tbody></table>
+    </div>
+  </section>
+
+  <!-- LEARNING -->
+  <section id="tab-learning" class="tab">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head"><h2>How it decides</h2><button class="btn primary" id="retrainBtn">Retrain from outcomes</button></div>
+        <p class="formula">Deal Score = P(Close) × Deal Value</p>
+        <p class="muted">P(Close) = σ(b + Σ wᵢ·signalᵢ). Day 1 uses rule-based weights. Every logged outcome (visited, closed, lost, or an override) becomes training data, and the weights shift towards what actually closes for <b>you</b>.</p>
+        <div id="modelStats" class="stats"></div>
+      </div>
+      <div class="card">
+        <h2>Signal weights</h2>
+        <div class="legend"><span class="sw rules"></span>Day-1 rules <span class="sw live"></span>Current</div>
+        <div id="weights"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- OUTBOX -->
+  <section id="tab-outbox" class="tab">
+    <div class="card">
+      <div class="card-head"><h2>Outbox</h2>
+        <div class="seg" id="outSeg"><button data-kind="" class="active">All</button><button data-kind="alert">Alerts (80+)</button><button data-kind="digest">Digests</button><button data-kind="nurture">Nurture (&lt;50)</button></div>
+      </div>
+      <div id="outList" class="outlist"></div>
+    </div>
+  </section>
+</main>
+
+<!-- Deal / lead drawer -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <button class="close" id="drawerClose" aria-label="Close">×</button>
+  <div id="drawerBody"></div>
+</aside>
+
+<div class="toast" id="toast"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
