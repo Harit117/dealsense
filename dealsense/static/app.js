@@ -161,7 +161,7 @@ async function openDeal(leadId, propId) {
   openDrawer(`
     <div class="muted">${esc(lead.source)} lead · ${esc(lead.phone || "no phone")}</div>
     <h3>${esc(lead.name)} × ${esc(d.property_label)}</h3>
-    <div class="muted">${esc(d.title)} · ${inr(d.price)}${d.area_sqft ? ` · ${d.area_sqft.toLocaleString("en-IN")} sq ft` : ""}</div>
+    <div class="muted">${esc(d.title)} · ${inr(d.price)}</div>
     <div class="big-score"><span class="n" style="color:var(--${scoreCls(d.score) === "hot" ? "hot" : scoreCls(d.score) === "warm" ? "warm" : "cool"})">${Math.round(d.score)}</span><span class="muted">/100 · P(close) ${(d.p_close * 100).toFixed(0)}% × commission ${inr(d.deal_value)} = <b>${inr(d.expected_value)}</b> expected</span></div>
     <span class="step ${stepCls(d.next_step)}">${esc(d.next_step)}</span> <span class="muted">route: ${esc(d.route)}${d.outcome ? ` · logged: <b>${esc(d.outcome)}</b>` : ""}</span>
 
